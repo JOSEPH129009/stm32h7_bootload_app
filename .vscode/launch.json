@@ -1,0 +1,83 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Jlink launch",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/bootloader_app.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "jlink",
+            "serverpath": "/home/josephjoe1209/opt/SEGGER/JLink_Linux_V766e_x86_64/JLinkGDBServer",
+            "device": "STM32H743ZI",
+            "interface": "swd",
+            "preLaunchTask": "build all",
+            // Below shows peripherals state
+            // "svdFile": "${env:HOME}/ModusToolbox_2.0/libraries/udd-1.1/udd/devices/MXS40/PSoC6ABLE2/studio/svd/psoc6_01.svd"
+            // Below shows output of GDB, helpful when something is not working right
+            "showDevDebugOutput": "both",
+            // "svdFile": "", // Include svd to watch device peripherals
+            
+            //below is debug terminal printf
+            // "swoConfig":
+            // {
+            //     "enabled": true,
+            //     "cpuFrequency": 160000000,
+            //     "swoFrequency": 4000000,
+            //     "source": "probe",
+            //     "decoders":
+            //     [
+            //         {
+            //             "label": "ITM port 0 output",
+            //             "type": "console",
+            //             "port": 0,
+            //             "showOnStartup": true,
+            //             "encoding": "ascii"
+            //         }
+            //     ]
+            // }
+
+        },        
+        {
+            "name": "Jlink attach",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/bootloader_app.elf",
+            "request": "attach",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "jlink",
+            "serverpath": "/home/josephjoe1209/opt/SEGGER/JLink_Linux_V766e_x86_64/JLinkGDBServer",
+            "device": "STM32H743ZI",
+            "interface": "swd",
+            "preLaunchTask": "build all",
+            // Below shows peripherals state
+            // "svdFile": "${env:HOME}/ModusToolbox_2.0/libraries/udd-1.1/udd/devices/MXS40/PSoC6ABLE2/studio/svd/psoc6_01.svd"
+            // Below shows output of GDB, helpful when something is not working right
+            // "svdFile": "", // Include svd to watch device peripherals
+            
+            //below is debug terminal printf
+            // "swoConfig":
+            // {
+            //     "enabled": true,
+            //     "cpuFrequency": 160000000,
+            //     "swoFrequency": 4000000,
+            //     "source": "probe",
+            //     "decoders":
+            //     [
+            //         {
+            //             "label": "ITM port 0 output",
+            //             "type": "console",
+            //             "port": 0,
+            //             "showOnStartup": true,
+            //             "encoding": "ascii"
+            //         }
+            //     ]
+            // }
+
+        }
+    ]
+}
