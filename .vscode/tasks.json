@@ -14,6 +14,22 @@
             "type": "shell",
             "command": "make",
             "args": ["clean"]
+        },
+        {
+            "label": "JFlash Sector 1",
+            "group": "build",
+            "type": "shell",
+            "command": "make",
+            "args": ["jflash"]
+        },
+        {
+            "label": "Jlink ReadMem",
+            "group": "build",
+            "type": "shell",
+            "command": "make",
+            "args": ["jflash_mem"]
         }
     ]
 }
+
+//ctrl + shift + b to activate a tash

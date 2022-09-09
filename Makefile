@@ -197,3 +197,34 @@ clean:
 -include $(wildcard $(BUILD_DIR)/*.d)
 
 # *** EOF ***
+
+
+JLINK_PATH = /home/josephjoe1209/opt/SEGGER/JLink_Linux_V766e_x86_64
+device = STM32H743ZI
+
+jflash_script: $(BUILD_DIR)/$(TARGET).bin
+	@touch $@
+	@echo device $(device) > $@
+	@echo si 1 >> $@
+	@echo speed 4000 >> $@
+	@echo erase 0x8000000 0x801FFFF >> $@
+	@echo loadbin $< 0x8000000 >> $@
+	@echo qc >> $@ 
+
+# @echo -e r"\n"g"\n"qc > $@ stands for reset go and quit 
+# @echo -e si l stands for interface swd
+jflash: jflash_script
+	$(JLINK_PATH)/JLinkExe -commanderscript $<
+
+
+
+
+jflash_mem_script:
+	@touch $@
+	@echo device $(device) > $@
+	@echo si 1 >> $@
+	@echo speed 4000 >> $@
+	@echo mem8 0x8000000 0x100 >> $@
+	@echo qc >> $@ 
+jflash_mem: jflash_mem_script
+	$(JLINK_PATH)/JLinkExe -commanderscript $<

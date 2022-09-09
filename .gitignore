@@ -1,0 +1,5 @@
+build/*
+
+!build/bootloader.bin
+!build/bootloader.hex
+!build/bootloader.elf

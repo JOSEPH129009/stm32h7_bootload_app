@@ -1,0 +1,6 @@
+device STM32H743ZI
+si 1
+speed 4000
+erase 0x8000000 0x801FFFF
+loadbin build/bootloader_app.bin 0x8000000
+qc
