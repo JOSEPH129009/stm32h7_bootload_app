@@ -25,6 +25,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "bootloader.h"
+#include "frame.h"
+#include "variable.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,7 +57,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+unsigned char ch = 0;
 /* USER CODE END 0 */
 
 /**
@@ -90,7 +92,7 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim2);
-  // HAL_UART_Receive_IT(&huart1,(uint8_t*)&ch, 1);
+  HAL_UART_Receive_IT(&huart1,(uint8_t*)&ch,1);
   bootloader_main();
   /* USER CODE END 2 */
 
@@ -157,7 +159,15 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* Prevent unused argument(s) compilation warning */
+	if(huart->Instance == USART1)
+	{
+		recv_buf[recv_counter++] = ch;
+		HAL_UART_Receive_IT(&huart1,(uint8_t*)&ch,1);
+	}
+}
 /* USER CODE END 4 */
 
 /**

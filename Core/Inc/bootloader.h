@@ -1,5 +1,5 @@
-#ifndef INC_BOOTLOADER_H_
-#define INC_BOOTLOADER_H_
+#ifndef _BOOTLOADER_H_
+#define _BOOTLOADER_H_
 
 #define FLASH_APP_ADDR 0x08020000U   //bank 1 sector 1 total of 128k
 #define FLASH_APP_END_ADDRESS (FLASH_BANK1_BASE+FLASH_BANK_SIZE-0x10u) /**< address = 0x80ffff0, Leave a little extra space at the end. */
@@ -12,8 +12,9 @@ typedef enum{
     FLASH_ERROR           = 0xFFu  /**< Generic error. */
 }Flash_Status;
 
+
 static void print(char *msg, ...);
 static void jump_to_user_app(void);
 void bootloader_main(void);
 
-#endif /*INC_BOOTLOADER_H_*/
+#endif /*_BOOTLOADER_H_*/

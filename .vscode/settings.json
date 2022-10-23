@@ -10,7 +10,11 @@
         "adc.h": "c",
         "rtc.h": "c",
         "fdcan.h": "c",
-        "bootloader.h": "c"
+        "bootloader.h": "c",
+        "cstdio": "c",
+        "cstdint": "c",
+        "compare": "c",
+        "type_traits": "c"
     },
     "makefile.launchConfigurations": [
         {

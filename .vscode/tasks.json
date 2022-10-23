@@ -16,7 +16,7 @@
             "args": ["clean"]
         },
         {
-            "label": "JFlash Sector 1",
+            "label": "JFlash Sector 0",
             "group": "build",
             "type": "shell",
             "command": "make",
