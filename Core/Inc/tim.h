@@ -35,7 +35,7 @@ extern "C" {
 extern TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN Private defines */
-
+#define Get_Timer_1_ms_Base  __HAL_TIM_GET_COUNTER(&htim2)
 /* USER CODE END Private defines */
 
 void MX_TIM2_Init(void);

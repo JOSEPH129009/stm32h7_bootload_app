@@ -36,7 +36,12 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+typedef struct OPERATION_STATE
+{
+	uint8_t Main_State;
+	uint8_t Sub_State;
+	uint8_t Ex_Sub_State;
+}OP_STATE;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -53,7 +58,9 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void switch_main_status(uint8_t main_status,uint8_t sub_status);
+void switch_sub_status(OP_STATE* S, uint8_t D);
+void switch_to_ex_sub_status(OP_STATE* S);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

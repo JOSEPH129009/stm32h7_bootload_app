@@ -7,12 +7,22 @@
 #include "string.h"
 #include "bootloader.h"
 #include "variable.h"
+#include "constant.h"
+#include "bit_field.h"
 
 enum{
     LSB_FIRST,
     MSB_FIRST
 };
-uint32_t SerialDataSort(uint8_t len, uint8_t* data, uint32_t endianness)
+
+/**
+ * @brief   This function sort serial data for MSB_FIRST & LSB_FIRST up to 4 bytes.
+ * @param   len: up to 4.
+ * @param   *data: data pointer to be sorted
+ * @param   endianness: LSB_FIRST or MSB_FIRST
+ * @return  4 bytes
+ */
+uint32_t serial_sort_function(uint8_t len, uint8_t* data, uint32_t endianness)
 {
     int i;
     uint32_t ret_val = 0;
@@ -40,10 +50,6 @@ uint8_t checksum(uint16_t len, uint8_t* data)
 	return cs;
 }
 
-
-uint32_t bootloader_state = 0;
-uint32_t bootloader_program_state = 0;
-
 typedef struct firmware_update{
     uint32_t address;
     uint32_t size;
@@ -59,19 +65,24 @@ enum{
 enum{
     CLEAR_VAR,
     FRAME_ID_CHECK,
-    HEADER_GET,
-    TRANSMIT,
+    UPDATE_INFO_GET,
+    UPDATE_FIRMWARE,
+    RESPONSE,
     UPDATE_DONE
 };
 uint8_t transmit_buf[256] = {0};
-void negative_response(void)
+void negative_response(uint32_t error_flag)
 {
     transmit_buf[0] = BL_START_OF_FRAME;
     transmit_buf[1] = BL_NACK_FRAME;
     transmit_buf[2] = 0;
-    transmit_buf[3] = 0; //length 0
-    transmit_buf[4] = 0; //checksum
-    transmit_buf[5] = BL_END_OF_FRAME; 
+    transmit_buf[3] = 4; //length 0
+    transmit_buf[4] = (uint8_t)(error_flag>>24);
+    transmit_buf[5] = (uint8_t)(error_flag>>16);
+    transmit_buf[6] = (uint8_t)(error_flag>>8);
+    transmit_buf[7] = (uint8_t)error_flag;
+    transmit_buf[8] = checksum(4,&transmit_buf[4]); //checksum
+    transmit_buf[9] = BL_END_OF_FRAME; 
     HAL_UART_Transmit(&huart1,&transmit_buf[0],6,1000);
 }
 void positive_response(void)
@@ -93,64 +104,133 @@ int i = 0;
 firmware_update_t update_info = {0};
 void flash_program(void)
 {
-    bootloader_program_state = FRAME_ID_CHECK;
+    uint32_t temp = 0;
+    bootloader_state.Sub_State = FRAME_ID_CHECK;
     
-    while(!(bootloader_flag&0x2))
+    while(!(bootloader_flag & UpdateDone))
     {
-        switch (bootloader_program_state)
+        switch (bootloader_state.Sub_State)
         {
         case CLEAR_VAR:
-            bootloader_flag &= ~1; //clear bit 0
+            bootloader_error_flag = 0; //clear flag
+            bootloader_flag = bit_off(bootloader_flag,FirstByteRecv);
             recv_counter = 0;
             data_len = 0;
             memset((void *)recv_buf, 0x0, sizeof(frame_format_t));
-            bootloader_program_state = FRAME_ID_CHECK;
+            switch_sub_status(&bootloader_state,FRAME_ID_CHECK);
             break;
         case FRAME_ID_CHECK:
-            if(recv_counter >= 4)
+            if(bootloader_flag & FirstByteRecv)
             {
-                if(recv_buf[1] == BL_HEADER)
+                if(!time_gap_1ms_base(serial_port_timer,2000))
                 {
-                    bootloader_program_state = HEADER_GET;
+                    if(recv_counter >= 4)
+                    {
+                        if(recv_buf[0] != 0x55)
+                        {
+                            bootloader_flag = bit_on(bootloader_flag, FrameError);
+                        }
+                        else if(recv_buf[1] == BL_HEADER)
+                        {
+                            switch_sub_status(&bootloader_state,UPDATE_INFO_GET);
+                        }
+                        else if(recv_buf[1] == BL_PAYLOAD)
+                        {
+                            switch_sub_status(&bootloader_state,UPDATE_FIRMWARE);
+                        }
+                    }
                 }
-                if(recv_buf[0] != 0x55)
-                    bootloader_flag |= 1;
+                else 
+                {
+                    bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
+                    switch_sub_status(&bootloader_state,RESPONSE);
+                }
             }
             break;
-        case HEADER_GET:
-            data_len = recv_buf[DATA_LEN+1] << 8 | recv_buf[DATA_LEN]; //LSB first
-            if(recv_counter == (DATA_BEGIN + data_len + 1 + 1)) //checksum + end of frame
+        case UPDATE_INFO_GET:
+            if(!time_gap_1ms_base(serial_port_timer,2000))
             {
-                if(data_len == 15) // address + size + version[3] + checksum
+                data_len = recv_buf[DATA_LEN+1] << 8 | recv_buf[DATA_LEN]; //LSB first
+                if(recv_counter == (DATA_BEGIN + data_len + 1 + 1)) //checksum + end of frame
                 {
-                    update_info.address  = SerialDataSort(4,(uint8_t*)&recv_buf[DATA_BEGIN],MSB_FIRST);
-                    update_info.size     = SerialDataSort(4,(uint8_t*)&recv_buf[DATA_BEGIN+4],MSB_FIRST);
-                    for(i=0; i<3; i++)
-                        update_info.version[i] = SerialDataSort(3,(uint8_t*)&recv_buf[DATA_BEGIN+8],MSB_FIRST);
-                    update_info.checksum = SerialDataSort(4,(uint8_t*)&recv_buf[DATA_BEGIN+11],MSB_FIRST);
+                    if(data_len == 15) // address + size + version[3] + checksum
+                    {
+                        update_info.address  = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN],MSB_FIRST);
+                        update_info.size     = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN+4],MSB_FIRST);
+                        temp                 = serial_sort_function(3,(uint8_t*)&recv_buf[DATA_BEGIN+8],MSB_FIRST);
+                        for(i=0; i<3; i++)
+                            update_info.version[i] = (uint8_t)(temp >> (8*(2-i)));
+                        update_info.checksum = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN+11],MSB_FIRST);
+                    }
+                    else
+                        bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+
+                    if(update_info.size > FLASH_SECTOR_SIZE) // not larger than a sector 128k
+                        bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+
+                    if (update_info.address != FLASH_APP_ADDR) //0x802_0000 Bank 1 Sector 1
+                        bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+                    
+                    if(!(bootloader_error_flag > 0))
+                    {
+                        if(FLASH_OK != flash_erase_sector(1,1))
+                            bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+                        else
+                            bootloader_flag = bit_on(bootloader_flag, UpdateInfoGet);
+                    }
+                    
+                    switch_sub_status(&bootloader_state,RESPONSE);
+                }
+            }
+            else 
+            {
+                bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
+                switch_sub_status(&bootloader_state,RESPONSE);
+            }
+            break;
+        case UPDATE_FIRMWARE:
+            if(!time_gap_1ms_base(serial_port_timer,2000))
+            {
+                if(bootloader_flag & UpdateInfoGet)
+                {
+                    address_counter += address_counter + data_len;
+                    data_len = recv_buf[DATA_LEN+1] << 8 | recv_buf[DATA_LEN]; //LSB first
+                    if(recv_counter == (DATA_BEGIN + data_len + 1 + 1)) //checksum + end of frame
+                    {
+                        if(FLASH_OK != flash_write(update_info.address+address_counter,
+                                                    (uint32_t*)&recv_buf[DATA_BEGIN],data_len))
+                        {
+                            bootloader_error_flag = bit_on(bootloader_error_flag, UpdateError);
+                        }
+                        switch_sub_status(&bootloader_state,RESPONSE);
+                    }
                 }
                 else
-                    bootloader_flag |= 1;
-
-                if(update_info.size > 0x20000) // not larger than a sector 128k
-                    bootloader_flag |= 1;
-
-                if (update_info.address != FLASH_APP_ADDR) //0x802_0000 Bank 1 Sector 1
-                    bootloader_flag |= 1;
-                bootloader_program_state = TRANSMIT;
+                {
+                    bootloader_error_flag = bit_on(bootloader_error_flag, UpdateError);
+                    switch_sub_status(&bootloader_state,RESPONSE);
+                }
+            }
+            else 
+            {
+                bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
+                switch_sub_status(&bootloader_state,RESPONSE);
             }
             break;
-        case TRANSMIT:
+        case RESPONSE:
             frame_checksum = checksum(data_len, (uint8_t *)&recv_buf[DATA_BEGIN]);
             if(frame_checksum != recv_buf[DATA_BEGIN + data_len])
-                bootloader_flag |= 1;
-            if(bootloader_flag != 1)
-                positive_response();
+                bootloader_flag = bit_on(bootloader_flag, FrameError);
+
+            if(bootloader_error_flag > 0)
+                negative_response(bootloader_error_flag);
             else
-                negative_response();
-            bootloader_program_state = CLEAR_VAR;
+                positive_response();
+
+            switch_sub_status(&bootloader_state,CLEAR_VAR);             
             break;
         case UPDATE_DONE:
+            bootloader_flag = bit_on(bootloader_flag,UpdateDone);
             break;
         default:
             break;
@@ -158,29 +238,30 @@ void flash_program(void)
     }
 }
 
+
 // volatile uint32_t debug_I;
 void bootloader_main(void)
 {
-    uint32_t TimeNow;
-    TimeNow = __HAL_TIM_GET_COUNTER(&htim2);
-    bootloader_state = IDLE_STATE;
+    uint32_t TimeNow = 0;
+    TimeNow = Get_Timer_1_ms_Base;
+    bootloader_state.Main_State = IDLE_STATE;
     while(1)
     {
-        switch (bootloader_state)
+        switch (bootloader_state.Main_State)
         {
         case IDLE_STATE:
             // print("timecounter: %ld", (TimeNow - __HAL_TIM_GET_COUNTER(&htim2)));
             if(time_gap_1ms_base(TimeNow,5000))
             {
-                bootloader_state = JUMP_STATE;
+                switch_main_status(JUMP_STATE, 0);
             }
             if(recv_counter > 0)
-                bootloader_state = FLASH_PROGRAM_STATE;
+                switch_main_status(FLASH_PROGRAM_STATE, 0);
             break;
 
         case FLASH_PROGRAM_STATE:     
             flash_program();
-            bootloader_state = JUMP_STATE;
+            switch_main_status(JUMP_STATE, CLEAR_VAR);
             break;
 
         case JUMP_STATE:
@@ -195,7 +276,7 @@ void bootloader_main(void)
             }
             else
             {
-                print("no user app found");
+                // print("no user app found");
                 while(1)
                     ;
             }
@@ -259,7 +340,7 @@ Flash_Status flash_erase_sector(uint8_t sector, uint8_t numberofsector)
     erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
     uint32_t errorcode;
     HAL_FLASH_Unlock();
-    if(HAL_FLASHEx_Erase(&erase, &errorcode) != HAL_OK)
+    if(HAL_OK != HAL_FLASHEx_Erase(&erase, &errorcode))
     {
         status = FLASH_ERROR;
     }
@@ -273,27 +354,35 @@ Flash_Status flash_erase_sector(uint8_t sector, uint8_t numberofsector)
  * @param address: first address to be written to
  * @param *data: array of data that we want to write
  * @param length: 
- *         This parameter shall be aligned to the Flash word:
- *          - 256 bits for STM32H74x/5X devices (8x 32bits words)
+ *         max value: 256 btye
+ *         This parameter shall be aligned to a Flash word:
+ *         A flash word - 256 bits for STM32H74x/5X devices (8x 32bits words =32 bytes)
+ *         if not aligned to a flash word, it automatically fills up with 0xFF
  * @return report success of writing
 */
 Flash_Status flash_write (uint32_t address, uint32_t* data, uint32_t length)
 {
     Flash_Status status = FLASH_OK;
+    uint32_t write_buffer[64] = {0}; //256 bytes
+    uint32_t remainder = 0;
+    remainder = length%8;
+    memset(&write_buffer[0],0xFF,256);
+    memcpy(&write_buffer[0],data,length);
     HAL_FLASH_Unlock();
-    if((address+(length*4)) >= FLASH_APP_END_ADDRESS) 
+    if((length > 256 || (address + length + remainder) >= FLASH_APP_END_ADDRESS)) 
     {
         status = FLASH_ERROR_SIZE;
     }
     else
     {
-        for(uint32_t i = 0; (i < length) && (status == FLASH_OK); i++)
+        for(uint32_t i = 0; (i < length) && (status == FLASH_OK);)
         {
-            if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, address, data[i]) != HAL_OK)
+            if(HAL_OK != HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, address, (uint32_t)&write_buffer[0]))
             {
                 status |= FLASH_ERROR_WRITE;
             }
-            address += 4;
+            address += 32; //flash word 256bit / 8bit
+            i += 8; // flash word 32byte / 4 byte(uint32_t)
         }
     }
     HAL_FLASH_Lock();

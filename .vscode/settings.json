@@ -14,7 +14,11 @@
         "cstdio": "c",
         "cstdint": "c",
         "compare": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "tim.h": "c",
+        "bit_field.h": "c",
+        "constant.h": "c",
+        "variable.h": "c"
     },
     "makefile.launchConfigurations": [
         {

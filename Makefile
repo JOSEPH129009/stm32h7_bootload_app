@@ -36,6 +36,7 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
+Core/Src/bit_field.c \
 Core/Src/variable.c \
 Core/Src/bootloader.c \
 Core/Src/main.c \
