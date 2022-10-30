@@ -53,19 +53,19 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void switch_main_status(uint8_t main_status,uint8_t sub_status)
+void switch_main_state(uint8_t main_status,uint8_t sub_status)
 {
 	old_bootloader_state = bootloader_state;
 	bootloader_state.Main_State = main_status;
 	bootloader_state.Sub_State = sub_status;
 	bootloader_state.Ex_Sub_State = 0;
 }
-void switch_sub_status(OP_STATE* S, uint8_t D)
+void switch_sub_state(OP_STATE* S, uint8_t D)
 {
 	S->Ex_Sub_State = S->Sub_State;
 	S->Sub_State = D;
 }
-void switch_to_ex_sub_status(OP_STATE* S)
+void switch_to_ex_sub_state(OP_STATE* S)
 {
 	uint8_t temp = 0;
 	temp = S->Sub_State;

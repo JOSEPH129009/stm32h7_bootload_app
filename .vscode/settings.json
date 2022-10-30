@@ -18,7 +18,8 @@
         "tim.h": "c",
         "bit_field.h": "c",
         "constant.h": "c",
-        "variable.h": "c"
+        "variable.h": "c",
+        "gpio.h": "c"
     },
     "makefile.launchConfigurations": [
         {

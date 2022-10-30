@@ -2,7 +2,7 @@
 
 #include "bit_field.h"
 
-uint32_t bit_on(uint32_t variable, uint8_t bit) {
+uint32_t bit_on(uint32_t variable, uint32_t bit) {
 	BIT_OP_TYPE temp;
 	temp.R = variable;
 	switch (bit) {
@@ -105,7 +105,7 @@ uint32_t bit_on(uint32_t variable, uint8_t bit) {
 	}
 	return temp.R;
 }
-uint32_t bit_off(uint32_t variable, uint8_t bit) {
+uint32_t bit_off(uint32_t variable, uint32_t bit) {
 	BIT_OP_TYPE temp;
 	temp.R = variable;
 	switch (bit) {

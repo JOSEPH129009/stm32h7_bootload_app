@@ -13,8 +13,6 @@ typedef enum{
 }Flash_Status;
 
 typedef void (*frame_ID_function_t)(void);
-static void print(char *msg, ...);
-static void jump_to_user_app(void);
 void bootloader_main(void);
 Flash_Status flash_erase_sector(uint8_t sector, uint8_t numberofsector);
 Flash_Status flash_write (uint32_t address, uint32_t* data, uint32_t length);

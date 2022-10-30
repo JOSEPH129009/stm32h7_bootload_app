@@ -10,7 +10,11 @@
 #include "constant.h"
 #include "bit_field.h"
 
-
+static void print(char *msg, ...);
+static void jump_to_user_app(void);
+void header_info_get(void);
+void update_firmware(void);
+void update_done(void);
 frame_ID_function_t do_frame_ID_stuff[]={
     NULL,
     header_info_get, //1
@@ -112,73 +116,70 @@ int i = 0;
 firmware_update_t update_info = {0};
 void flash_program(void)
 {
-    bootloader_state.Sub_State = SUB_STATE_FRAME_ID_CHECK;
-    
-    while(!(bootloader_flag & UpdateDone))
+    switch (bootloader_state.Sub_State)
     {
-        switch (bootloader_state.Sub_State)
+    case SUB_STATE_CLEAR_VAR:
+        bootloader_error_flag = 0; //clear flag
+        bootloader_flag = bit_off(bootloader_flag,FirstByteRecv);
+        recv_uart_counter = 0;
+        recv_payload_len = 0;
+        transmit_data_len = 0;
+        memset((void *)recv_buf, 0x0, sizeof(frame_format_t));
+        switch_sub_state(&bootloader_state,SUB_STATE_FRAME_ID_CHECK);
+        break;
+    case SUB_STATE_FRAME_ID_CHECK:
+        if(bootloader_flag & FirstByteRecv)
         {
-        case SUB_STATE_CLEAR_VAR:
-            bootloader_error_flag = 0; //clear flag
-            bootloader_flag = bit_off(bootloader_flag,FirstByteRecv);
-            recv_uart_counter = 0;
-            recv_payload_len = 0;
-            transmit_data_len = 0;
-            memset((void *)recv_buf, 0x0, sizeof(frame_format_t));
-            switch_sub_status(&bootloader_state,SUB_STATE_FRAME_ID_CHECK);
-            break;
-        case SUB_STATE_FRAME_ID_CHECK:
-            if(bootloader_flag & FirstByteRecv)
-            {
-                if(!time_gap_1ms_base(serial_port_timer,2000))
-                {
-                    if(recv_uart_counter >= 4)
-                    {
-                        switch_sub_status(&bootloader_state,SUB_STATE_DO_FRAME_ID_STUFF);
-                        if(recv_buf[0] != 0x55)
-                        {
-                            bootloader_error_flag = bit_on(bootloader_error_flag, FrameError);
-                            negative_response(bootloader_error_flag);
-                            switch_sub_status(&bootloader_state,SUB_STATE_TRANSMIT);
-                        }
-                    }
-                }
-                else 
-                {
-                    bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
-                    switch_sub_status(&bootloader_state,SUB_STATE_TRANSMIT);
-                }
-            }
-            break;
-        case SUB_STATE_DO_FRAME_ID_STUFF:
             if(!time_gap_1ms_base(serial_port_timer,2000))
             {
-
-                do_frame_ID_stuff[recv_buf[1]]();
-
-                frame_checksum = checksum(recv_payload_len, (uint8_t *)&recv_buf[DATA_BEGIN]);
-                if(frame_checksum != recv_buf[DATA_BEGIN + recv_payload_len])
-                    bootloader_error_flag = bit_on(bootloader_error_flag, FrameError);
-
-                if(bootloader_error_flag > 0)
-                    negative_response(bootloader_error_flag);
-                else
-                    positive_response();
+                if(recv_uart_counter >= 4)
+                {
+                    switch_sub_state(&bootloader_state,SUB_STATE_DO_FRAME_ID_STUFF);
+                    if(recv_buf[0] != 0x55)
+                    {
+                        bootloader_error_flag = bit_on(bootloader_error_flag, FrameError);
+                        negative_response(bootloader_error_flag);
+                        switch_sub_state(&bootloader_state,SUB_STATE_TRANSMIT);
+                    }
+                }
             }
             else 
             {
                 bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
-                negative_response(bootloader_error_flag);
+                switch_sub_state(&bootloader_state,SUB_STATE_TRANSMIT);
             }
-            switch_sub_status(&bootloader_state,SUB_STATE_TRANSMIT);
-            break;
-        case SUB_STATE_TRANSMIT:
-            HAL_UART_Transmit(&huart1,&transmit_buf[0],transmit_data_len,1000);
-            switch_sub_status(&bootloader_state,SUB_STATE_CLEAR_VAR);             
-            break;
-        default:
-            break;
         }
+        break;
+    case SUB_STATE_DO_FRAME_ID_STUFF:
+        if(!time_gap_1ms_base(serial_port_timer,2000))
+        {
+            frame_checksum = checksum(recv_payload_len, (uint8_t *)&recv_buf[DATA_BEGIN]);
+            if(frame_checksum != recv_buf[DATA_BEGIN + recv_payload_len])
+                bootloader_error_flag = bit_on(bootloader_error_flag, FrameError);
+
+            if(bootloader_error_flag == 0)
+                do_frame_ID_stuff[recv_buf[1]]();
+
+            if(bootloader_error_flag == 0)
+                positive_response();
+            else
+                negative_response(bootloader_error_flag);
+        }
+        else 
+        {
+            bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
+            negative_response(bootloader_error_flag);
+        }
+        switch_sub_state(&bootloader_state,SUB_STATE_TRANSMIT);
+        break;
+    case SUB_STATE_TRANSMIT:
+        HAL_UART_Transmit(&huart1,&transmit_buf[0],transmit_data_len,1000);
+        if(bootloader_flag & UpdateDone)
+            bootloader_flag = bit_on(bootloader_flag,UpdateDoneReply);
+        switch_sub_state(&bootloader_state,SUB_STATE_CLEAR_VAR);             
+        break;
+    default:
+        break;
     }
 }
 
@@ -187,7 +188,9 @@ void flash_program(void)
 void bootloader_main(void)
 {
     uint32_t TimeNow = 0;
+    uint32_t light_timer = 0;
     TimeNow = Get_Timer_1_ms_Base;
+    light_timer = Get_Timer_1_ms_Base;
     bootloader_state.Main_State = MAIN_STATE_IDLE;
     while(1)
     {
@@ -197,21 +200,33 @@ void bootloader_main(void)
             // print("timecounter: %ld", (TimeNow - __HAL_TIM_GET_COUNTER(&htim2)));
             if(time_gap_1ms_base(TimeNow,5000))
             {
-                switch_main_status(MAIN_STATE_JUMP, 0);
+                switch_main_state(MAIN_STATE_JUMP, 0);
             }
+
+            if(time_gap_1ms_base(light_timer,500))
+            {
+                LED0_Toggle;
+                light_timer = Get_Timer_1_ms_Base;
+            }
+
             if(recv_uart_counter > 0)
-                switch_main_status(MAIN_STATE_FLASH_PROGRAM, SUB_STATE_FRAME_ID_CHECK);
+                switch_main_state(MAIN_STATE_FLASH_PROGRAM, SUB_STATE_FRAME_ID_CHECK);
             break;
-
         case MAIN_STATE_FLASH_PROGRAM:     
-            flash_program();
-            switch_main_status(MAIN_STATE_JUMP, 0);
+            if(!(bootloader_flag&UpdateDone) && !(bootloader_flag&UpdateDoneReply))
+            {
+                flash_program();
+                LED0_Toggle;
+            }
+            else
+            {
+                switch_main_state(MAIN_STATE_JUMP, 0);
+            }
             break;
-
         case MAIN_STATE_JUMP:
             // print("Timesup");
             /*This address should be MSP, aka main stack pointer, the fisrt of vector table*/
-            if(*(uint32_t*)FLASH_APP_ADDR != 0xFFFFFFFF)
+            if(*(volatile uint32_t*)FLASH_APP_ADDR != 0xFFFFFFFF)
             {
                 HAL_RCC_DeInit();
                 HAL_DeInit();
@@ -221,11 +236,11 @@ void bootloader_main(void)
             else
             {
                 // print("no user app found");
+                LED1_On;
                 while(1)
                     ;
             }
             break;
-        
         default:
             break;
         }
@@ -359,7 +374,7 @@ void header_info_get(void)
         if (update_info.address != FLASH_APP_ADDR) //0x802_0000 Bank 1 Sector 1
             bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
         
-        if(!(bootloader_error_flag > 0))
+        if(bootloader_error_flag == 0)
         {
             if(FLASH_OK != flash_erase_sector(1,1))
                 bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
@@ -392,5 +407,6 @@ void update_firmware(void)
 
 void update_done(void)
 {
-    bootloader_flag = bit_on(bootloader_flag,UpdateDone);
+    if(bootloader_error_flag == 0)
+        bootloader_flag = bit_on(bootloader_flag,UpdateDone);
 }

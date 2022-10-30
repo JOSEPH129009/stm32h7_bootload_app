@@ -1,12 +1,12 @@
 ### stm32h7_bootload_app Introdunction
 
-- It waits 5s for update message. If no single byte is received by USART1, it looks to the memory location 0x0802_0000. If the data is 0xFFFFFFFF (erased value) at the location, the system halts in a while loop, else it performs a jump to the location. (have to enable a LED blinking to indicate where the syetem runs at cunrrently in the future)
+- The LED 0 blinks at 1hz for 5 seconds and the system waits for update message. If no single byte is received from FDTI chip (USART1), it looks to the memory location at 0x0802_0000. If the data is 0xFFFFFFFF (erased value) at the location, the system halts in a while loop and LED 1 turns on, else it starts excuting code from  that location.
 
-- CH340 driver does not work so change USART1 pins and use FDTI chip to talk to /dev/ttyUSB0
+- if a byte is received, it loops in a program state machine until it receives program done ID frame from serial port application. 
 
-- only takes program size smaller than 128k (a sector for STM32H743), update size does not have to aligned to a flash word (256bits), software will auto-fill up with 0xFF. max PAYLOAD of update byte is 256 bytes per frame
+- on board CH340 driver does not work with Linux serial port so I change USART1 pins to PB6 PB7 and use FDTI chip to talk to /dev/ttyUSB0
 
-- implement program arguments with firmware version & update address in the future
+- This program only takes bin size smaller than 128k (a sector for STM32H743). Update size does not have to be aligned to a flash word (256bits), software will auto-fill up with 0xFFif not aligned. Max PAYLOAD of update byte is 256 bytes per frame
 
 - versioning are MAJOR.MINOR.PATCH. each is represented by 1 byte decimal value (0 ~ 255)
  e.g. v2.0.23 (update_info.version[0]=0x02, update_info.version[1]=0x00, update_info.version[2]=0x17)

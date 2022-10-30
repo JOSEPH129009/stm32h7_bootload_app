@@ -9,6 +9,7 @@
 #define FirstByteRecv      bit0
 #define UpdateInfoGet      bit1
 #define UpdateDone         bit2
+#define UpdateDoneReply    bit3
 
 /*bootloader_error_flag*/
 #define WrongUpdateInfo    bit0

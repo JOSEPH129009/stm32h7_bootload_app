@@ -58,18 +58,26 @@ typedef struct OPERATION_STATE
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void switch_main_status(uint8_t main_status,uint8_t sub_status);
-void switch_sub_status(OP_STATE* S, uint8_t D);
-void switch_to_ex_sub_status(OP_STATE* S);
+void switch_main_state(uint8_t main_status,uint8_t sub_status);
+void switch_sub_state(OP_STATE* S, uint8_t D);
+void switch_to_ex_sub_state(OP_STATE* S);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define debug_tx_Pin GPIO_PIN_6
-#define debug_tx_GPIO_Port GPIOB
-#define debug_rx_Pin GPIO_PIN_7
-#define debug_rx_GPIO_Port GPIOB
+#define LED1_Pin GPIO_PIN_5
+#define LED1_GPIO_Port GPIOE
+#define LED0_Pin GPIO_PIN_5
+#define LED0_GPIO_Port GPIOB
+#define FTDI_tx_Pin GPIO_PIN_6
+#define FTDI_tx_GPIO_Port GPIOB
+#define FTDI_rx_Pin GPIO_PIN_7
+#define FTDI_rx_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-
+#define LED0_Off HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
+#define LED0_On HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);
+#define LED0_Toggle HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+#define LED1_Off HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
+#define LED1_On HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
