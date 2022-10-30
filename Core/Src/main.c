@@ -183,8 +183,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   /* Prevent unused argument(s) compilation warning */
 	if(huart->Instance == USART1)
 	{
-		recv_buf[recv_counter++] = ch;
-		if(recv_counter == 1)
+		recv_buf[recv_uart_counter++] = ch;
+		if(recv_uart_counter == 1)
 		{
 			bootloader_flag = bit_on(bootloader_flag,FirstByteRecv);
       serial_port_timer = Get_Timer_1_ms_Base;

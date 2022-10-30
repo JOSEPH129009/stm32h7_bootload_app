@@ -10,6 +10,16 @@
 #include "constant.h"
 #include "bit_field.h"
 
+
+frame_ID_function_t do_frame_ID_stuff[]={
+    NULL,
+    header_info_get, //1
+    NULL,
+    NULL,
+    update_firmware, //4
+    update_done,  //5
+};
+
 enum{
     LSB_FIRST,
     MSB_FIRST
@@ -58,19 +68,17 @@ typedef struct firmware_update{
 }firmware_update_t;
 
 enum{
-    IDLE_STATE,
-    FLASH_PROGRAM_STATE,
-    JUMP_STATE
+    MAIN_STATE_IDLE,
+    MAIN_STATE_FLASH_PROGRAM,
+    MAIN_STATE_JUMP
 };
 enum{
-    CLEAR_VAR,
-    FRAME_ID_CHECK,
-    UPDATE_INFO_GET,
-    UPDATE_FIRMWARE,
-    RESPONSE,
-    UPDATE_DONE
+    SUB_STATE_CLEAR_VAR,
+    SUB_STATE_FRAME_ID_CHECK,
+    SUB_STATE_DO_FRAME_ID_STUFF,
+    SUB_STATE_TRANSMIT,
 };
-uint8_t transmit_buf[256] = {0};
+
 void negative_response(uint32_t error_flag)
 {
     transmit_buf[0] = BL_START_OF_FRAME;
@@ -83,7 +91,7 @@ void negative_response(uint32_t error_flag)
     transmit_buf[7] = (uint8_t)error_flag;
     transmit_buf[8] = checksum(4,&transmit_buf[4]); //checksum
     transmit_buf[9] = BL_END_OF_FRAME; 
-    HAL_UART_Transmit(&huart1,&transmit_buf[0],6,1000);
+    transmit_data_len = 10;
 }
 void positive_response(void)
 {
@@ -93,144 +101,80 @@ void positive_response(void)
     transmit_buf[3] = 0; //length 0
     transmit_buf[4] = 0; //checksum
     transmit_buf[5] = BL_END_OF_FRAME; 
-    HAL_UART_Transmit(&huart1,&transmit_buf[0],6,1000);
+    transmit_data_len = 6;
 }
 
 #define DATA_LEN   2
 #define DATA_BEGIN 4
-uint16_t data_len = 0;
+uint16_t recv_payload_len = 0;
 uint8_t frame_checksum = 0;
 int i = 0;
 firmware_update_t update_info = {0};
 void flash_program(void)
 {
-    uint32_t temp = 0;
-    bootloader_state.Sub_State = FRAME_ID_CHECK;
+    bootloader_state.Sub_State = SUB_STATE_FRAME_ID_CHECK;
     
     while(!(bootloader_flag & UpdateDone))
     {
         switch (bootloader_state.Sub_State)
         {
-        case CLEAR_VAR:
+        case SUB_STATE_CLEAR_VAR:
             bootloader_error_flag = 0; //clear flag
             bootloader_flag = bit_off(bootloader_flag,FirstByteRecv);
-            recv_counter = 0;
-            data_len = 0;
+            recv_uart_counter = 0;
+            recv_payload_len = 0;
+            transmit_data_len = 0;
             memset((void *)recv_buf, 0x0, sizeof(frame_format_t));
-            switch_sub_status(&bootloader_state,FRAME_ID_CHECK);
+            switch_sub_status(&bootloader_state,SUB_STATE_FRAME_ID_CHECK);
             break;
-        case FRAME_ID_CHECK:
+        case SUB_STATE_FRAME_ID_CHECK:
             if(bootloader_flag & FirstByteRecv)
             {
                 if(!time_gap_1ms_base(serial_port_timer,2000))
                 {
-                    if(recv_counter >= 4)
+                    if(recv_uart_counter >= 4)
                     {
+                        switch_sub_status(&bootloader_state,SUB_STATE_DO_FRAME_ID_STUFF);
                         if(recv_buf[0] != 0x55)
                         {
-                            bootloader_flag = bit_on(bootloader_flag, FrameError);
-                        }
-                        else if(recv_buf[1] == BL_HEADER)
-                        {
-                            switch_sub_status(&bootloader_state,UPDATE_INFO_GET);
-                        }
-                        else if(recv_buf[1] == BL_PAYLOAD)
-                        {
-                            switch_sub_status(&bootloader_state,UPDATE_FIRMWARE);
+                            bootloader_error_flag = bit_on(bootloader_error_flag, FrameError);
+                            negative_response(bootloader_error_flag);
+                            switch_sub_status(&bootloader_state,SUB_STATE_TRANSMIT);
                         }
                     }
                 }
                 else 
                 {
                     bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
-                    switch_sub_status(&bootloader_state,RESPONSE);
+                    switch_sub_status(&bootloader_state,SUB_STATE_TRANSMIT);
                 }
             }
             break;
-        case UPDATE_INFO_GET:
+        case SUB_STATE_DO_FRAME_ID_STUFF:
             if(!time_gap_1ms_base(serial_port_timer,2000))
             {
-                data_len = recv_buf[DATA_LEN+1] << 8 | recv_buf[DATA_LEN]; //LSB first
-                if(recv_counter == (DATA_BEGIN + data_len + 1 + 1)) //checksum + end of frame
-                {
-                    if(data_len == 15) // address + size + version[3] + checksum
-                    {
-                        update_info.address  = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN],MSB_FIRST);
-                        update_info.size     = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN+4],MSB_FIRST);
-                        temp                 = serial_sort_function(3,(uint8_t*)&recv_buf[DATA_BEGIN+8],MSB_FIRST);
-                        for(i=0; i<3; i++)
-                            update_info.version[i] = (uint8_t)(temp >> (8*(2-i)));
-                        update_info.checksum = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN+11],MSB_FIRST);
-                    }
-                    else
-                        bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
 
-                    if(update_info.size > FLASH_SECTOR_SIZE) // not larger than a sector 128k
-                        bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+                do_frame_ID_stuff[recv_buf[1]]();
 
-                    if (update_info.address != FLASH_APP_ADDR) //0x802_0000 Bank 1 Sector 1
-                        bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
-                    
-                    if(!(bootloader_error_flag > 0))
-                    {
-                        if(FLASH_OK != flash_erase_sector(1,1))
-                            bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
-                        else
-                            bootloader_flag = bit_on(bootloader_flag, UpdateInfoGet);
-                    }
-                    
-                    switch_sub_status(&bootloader_state,RESPONSE);
-                }
-            }
-            else 
-            {
-                bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
-                switch_sub_status(&bootloader_state,RESPONSE);
-            }
-            break;
-        case UPDATE_FIRMWARE:
-            if(!time_gap_1ms_base(serial_port_timer,2000))
-            {
-                if(bootloader_flag & UpdateInfoGet)
-                {
-                    address_counter += address_counter + data_len;
-                    data_len = recv_buf[DATA_LEN+1] << 8 | recv_buf[DATA_LEN]; //LSB first
-                    if(recv_counter == (DATA_BEGIN + data_len + 1 + 1)) //checksum + end of frame
-                    {
-                        if(FLASH_OK != flash_write(update_info.address+address_counter,
-                                                    (uint32_t*)&recv_buf[DATA_BEGIN],data_len))
-                        {
-                            bootloader_error_flag = bit_on(bootloader_error_flag, UpdateError);
-                        }
-                        switch_sub_status(&bootloader_state,RESPONSE);
-                    }
-                }
+                frame_checksum = checksum(recv_payload_len, (uint8_t *)&recv_buf[DATA_BEGIN]);
+                if(frame_checksum != recv_buf[DATA_BEGIN + recv_payload_len])
+                    bootloader_error_flag = bit_on(bootloader_error_flag, FrameError);
+
+                if(bootloader_error_flag > 0)
+                    negative_response(bootloader_error_flag);
                 else
-                {
-                    bootloader_error_flag = bit_on(bootloader_error_flag, UpdateError);
-                    switch_sub_status(&bootloader_state,RESPONSE);
-                }
+                    positive_response();
             }
             else 
             {
                 bootloader_error_flag = bit_on(bootloader_error_flag, TimeOut);
-                switch_sub_status(&bootloader_state,RESPONSE);
-            }
-            break;
-        case RESPONSE:
-            frame_checksum = checksum(data_len, (uint8_t *)&recv_buf[DATA_BEGIN]);
-            if(frame_checksum != recv_buf[DATA_BEGIN + data_len])
-                bootloader_flag = bit_on(bootloader_flag, FrameError);
-
-            if(bootloader_error_flag > 0)
                 negative_response(bootloader_error_flag);
-            else
-                positive_response();
-
-            switch_sub_status(&bootloader_state,CLEAR_VAR);             
+            }
+            switch_sub_status(&bootloader_state,SUB_STATE_TRANSMIT);
             break;
-        case UPDATE_DONE:
-            bootloader_flag = bit_on(bootloader_flag,UpdateDone);
+        case SUB_STATE_TRANSMIT:
+            HAL_UART_Transmit(&huart1,&transmit_buf[0],transmit_data_len,1000);
+            switch_sub_status(&bootloader_state,SUB_STATE_CLEAR_VAR);             
             break;
         default:
             break;
@@ -244,27 +188,27 @@ void bootloader_main(void)
 {
     uint32_t TimeNow = 0;
     TimeNow = Get_Timer_1_ms_Base;
-    bootloader_state.Main_State = IDLE_STATE;
+    bootloader_state.Main_State = MAIN_STATE_IDLE;
     while(1)
     {
         switch (bootloader_state.Main_State)
         {
-        case IDLE_STATE:
+        case MAIN_STATE_IDLE:
             // print("timecounter: %ld", (TimeNow - __HAL_TIM_GET_COUNTER(&htim2)));
             if(time_gap_1ms_base(TimeNow,5000))
             {
-                switch_main_status(JUMP_STATE, 0);
+                switch_main_status(MAIN_STATE_JUMP, 0);
             }
-            if(recv_counter > 0)
-                switch_main_status(FLASH_PROGRAM_STATE, 0);
+            if(recv_uart_counter > 0)
+                switch_main_status(MAIN_STATE_FLASH_PROGRAM, SUB_STATE_FRAME_ID_CHECK);
             break;
 
-        case FLASH_PROGRAM_STATE:     
+        case MAIN_STATE_FLASH_PROGRAM:     
             flash_program();
-            switch_main_status(JUMP_STATE, CLEAR_VAR);
+            switch_main_status(MAIN_STATE_JUMP, 0);
             break;
 
-        case JUMP_STATE:
+        case MAIN_STATE_JUMP:
             // print("Timesup");
             /*This address should be MSP, aka main stack pointer, the fisrt of vector table*/
             if(*(uint32_t*)FLASH_APP_ADDR != 0xFFFFFFFF)
@@ -324,7 +268,7 @@ static void print(char *msg, ...)
 
 
 /**
- * @brief   This function erases the memory.
+ * @brief   This function erases the memory in BANK 1.
  * @param   sector: the sector to be erased.
  * @param   numberofsector: number of sectors to be erased
  * @return  status: Report about the success of the erasing.
@@ -366,7 +310,8 @@ Flash_Status flash_write (uint32_t address, uint32_t* data, uint32_t length)
     uint32_t write_buffer[64] = {0}; //256 bytes
     uint32_t remainder = 0;
     remainder = length%8;
-    memset(&write_buffer[0],0xFF,256);
+    if(length < 256)
+        memset(&write_buffer[0],0xFF,256);
     memcpy(&write_buffer[0],data,length);
     HAL_FLASH_Unlock();
     if((length > 256 || (address + length + remainder) >= FLASH_APP_END_ADDRESS)) 
@@ -387,4 +332,65 @@ Flash_Status flash_write (uint32_t address, uint32_t* data, uint32_t length)
     }
     HAL_FLASH_Lock();
     return status;
+}
+
+
+void header_info_get(void)
+{   
+    uint32_t temp = 0;             
+    recv_payload_len = recv_buf[DATA_LEN+1] << 8 | recv_buf[DATA_LEN]; //LSB first
+    if(recv_uart_counter == (DATA_BEGIN + recv_payload_len + 1 + 1)) //checksum + end of frame
+    {
+        if(recv_payload_len == 15) // address + size + version[3] + checksum
+        {
+            update_info.address  = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN],MSB_FIRST);
+            update_info.size     = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN+4],MSB_FIRST);
+            temp                 = serial_sort_function(3,(uint8_t*)&recv_buf[DATA_BEGIN+8],MSB_FIRST);
+            for(i=0; i<3; i++)
+                update_info.version[i] = (uint8_t)(temp >> (8*(2-i)));
+            update_info.checksum = serial_sort_function(4,(uint8_t*)&recv_buf[DATA_BEGIN+11],MSB_FIRST);
+        }
+        else
+            bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+
+        if(update_info.size > FLASH_SECTOR_SIZE) // not larger than a sector 128k
+            bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+
+        if (update_info.address != FLASH_APP_ADDR) //0x802_0000 Bank 1 Sector 1
+            bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+        
+        if(!(bootloader_error_flag > 0))
+        {
+            if(FLASH_OK != flash_erase_sector(1,1))
+                bootloader_error_flag = bit_on(bootloader_error_flag, WrongUpdateInfo);
+            else
+                bootloader_flag = bit_on(bootloader_flag, UpdateInfoGet);
+        }
+    }
+}
+
+void update_firmware(void)
+{
+    if(bootloader_flag & UpdateInfoGet)
+    {
+        address_counter += address_counter + recv_payload_len;
+        recv_payload_len = recv_buf[DATA_LEN+1] << 8 | recv_buf[DATA_LEN]; //LSB first
+        if(recv_uart_counter == (DATA_BEGIN + recv_payload_len + 1 + 1)) //checksum + end of frame
+        {
+            if(FLASH_OK != flash_write(update_info.address+address_counter,
+                                        (uint32_t*)&recv_buf[DATA_BEGIN],recv_payload_len))
+            {
+                bootloader_error_flag = bit_on(bootloader_error_flag, UpdateError);
+            }
+        }
+    }
+    else
+    {
+        bootloader_error_flag = bit_on(bootloader_error_flag, UpdateError);
+    }
+}
+
+void update_done(void)
+{
+    bootloader_flag = bit_on(bootloader_flag,UpdateDone);
 }

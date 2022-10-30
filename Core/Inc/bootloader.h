@@ -12,7 +12,7 @@ typedef enum{
     FLASH_ERROR           = 0xFFu  /**< Generic error. */
 }Flash_Status;
 
-
+typedef void (*frame_ID_function_t)(void);
 static void print(char *msg, ...);
 static void jump_to_user_app(void);
 void bootloader_main(void);

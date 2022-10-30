@@ -18,11 +18,27 @@
 
 
 /**
- * @brief Header Format
+ * @brief Header Format - Reeceive
  *          -------------------------------------------------------------------------------------------
- *          |-SOF-|-Frame_ID-|-Len-|-Address-|-Size-|-Version-|-FirmwareChecksum-|-FrameChecksum-|-EOF-|
- *  Bytes:  ---1-------1--------2-------4-------4--------3-------------4-----------------1----------1--
+ *          |-SOF-|-BL_HEADER-|-Len-|-Address-|-Size-|-Version-|-FirmwareChecksum-|-FrameChecksum-|-EOF-|
+ *  Bytes:  ---1-------1---------2-------4-------4--------3-------------4-----------------1----------1--
  * 
+ */
+
+/**
+ * @brief ACK Format - Transmit
+ *          -------------------------------------------------
+ *          |-SOF-|-BL_ACK_FRAME-|-Len-|-FrameChecksum-|-EOF-|
+ *  Bytes:  ---1---------1----------2-----------1---------1--
+ * 
+ */
+
+/**
+ * @brief NACK Format - Transmit
+ *          ---------------------------------------------------------------------------------------------------
+ *          |-SOF-|-BL_NACK_FRAME-|-Len-|-ErrorFlag-|-ErrorFlag-|-ErrorFlag-|-ErrorFlag-|-FrameChecksum-|-EOF-|
+ *  Bytes:  ---1----------1----------4--------1----------1------------1-----------1------------1------------1--
+ * 4byte Error Flag MSB first
  */
 //frame IDS
 #define BL_HEADER       0x01 //sends info about firmware: size , version 
