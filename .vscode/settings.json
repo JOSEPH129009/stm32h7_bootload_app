@@ -19,7 +19,8 @@
         "bit_field.h": "c",
         "constant.h": "c",
         "variable.h": "c",
-        "gpio.h": "c"
+        "gpio.h": "c",
+        "frame.h": "c"
     },
     "makefile.launchConfigurations": [
         {

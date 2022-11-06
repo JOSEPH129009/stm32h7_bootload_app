@@ -220,8 +220,6 @@ jflash: jflash_script
 	$(JLINK_PATH)/JLinkExe -commanderscript $<
 
 
-
-
 jflash_mem_script:
 	@touch $@
 	@echo device $(device) > $@
@@ -230,4 +228,15 @@ jflash_mem_script:
 	@echo mem8 0x8000000 0x100 >> $@
 	@echo qc >> $@ 
 jflash_mem: jflash_mem_script
+	$(JLINK_PATH)/JLinkExe -commanderscript $<
+
+jflash_erase_sector1_script: $(BUILD_DIR)/$(TARGET).bin
+	@touch $@
+	@echo device $(device) > $@
+	@echo si 1 >> $@
+	@echo speed 4000 >> $@
+	@echo erase 0x8020000 0x803FFFF >> $@
+	@echo qc >> $@ 
+
+jflash_erase_sector1: jflash_erase_sector1_script
 	$(JLINK_PATH)/JLinkExe -commanderscript $<

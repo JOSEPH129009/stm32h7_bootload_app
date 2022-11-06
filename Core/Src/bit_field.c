@@ -7,34 +7,34 @@ uint32_t bit_on(uint32_t variable, uint32_t bit) {
 	temp.R = variable;
 	switch (bit) {
 	case bit0:
-		temp.Bits.B0 = 1;
+		temp.Bits.B00 = 1;
 		break;
 	case bit1:
-		temp.Bits.B1 = 1;
+		temp.Bits.B01 = 1;
 		break;
 	case bit2:
-		temp.Bits.B2 = 1;
+		temp.Bits.B02 = 1;
 		break;
 	case bit3:
-		temp.Bits.B3 = 1;
+		temp.Bits.B03 = 1;
 		break;
 	case bit4:
-		temp.Bits.B4 = 1;
+		temp.Bits.B04 = 1;
 		break;
 	case bit5:
-		temp.Bits.B5 = 1;
+		temp.Bits.B05 = 1;
 		break;
 	case bit6:
-		temp.Bits.B6 = 1;
+		temp.Bits.B06 = 1;
 		break;
 	case bit7:
-		temp.Bits.B7 = 1;
+		temp.Bits.B07 = 1;
 		break;
 	case bit8:
-		temp.Bits.B8 = 1;
+		temp.Bits.B08 = 1;
 		break;
 	case bit9:
-		temp.Bits.B9 = 1;
+		temp.Bits.B09 = 1;
 		break;
 	case bit10:
 		temp.Bits.B10 = 1;
@@ -110,34 +110,34 @@ uint32_t bit_off(uint32_t variable, uint32_t bit) {
 	temp.R = variable;
 	switch (bit) {
 	case bit0:
-		temp.Bits.B0 = 0;
+		temp.Bits.B00 = 0;
 		break;
 	case bit1:
-		temp.Bits.B1 = 0;
+		temp.Bits.B01 = 0;
 		break;
 	case bit2:
-		temp.Bits.B2 = 0;
+		temp.Bits.B02 = 0;
 		break;
 	case bit3:
-		temp.Bits.B3 = 0;
+		temp.Bits.B03 = 0;
 		break;
 	case bit4:
-		temp.Bits.B4 = 0;
+		temp.Bits.B04 = 0;
 		break;
 	case bit5:
-		temp.Bits.B5 = 0;
+		temp.Bits.B05 = 0;
 		break;
 	case bit6:
-		temp.Bits.B6 = 0;
+		temp.Bits.B06 = 0;
 		break;
 	case bit7:
-		temp.Bits.B7 = 0;
+		temp.Bits.B07 = 0;
 		break;
 	case bit8:
-		temp.Bits.B8 = 0;
+		temp.Bits.B08 = 0;
 		break;
 	case bit9:
-		temp.Bits.B9 = 0;
+		temp.Bits.B09 = 0;
 		break;
 	case bit10:
 		temp.Bits.B10 = 0;

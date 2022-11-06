@@ -44,19 +44,19 @@ typedef union Bit_operation_type
 	uint32_t R;
 	struct
 	{
-		uint32_t B0 : 1;
-		uint32_t B1 : 1;
-		uint32_t B2 : 1;
-		uint32_t B3 : 1;
-		uint32_t B4 : 1;
-		uint32_t B5 : 1;
-		uint32_t B6: 1;
-		uint32_t B7: 1;
-		uint32_t B8: 1;
-		uint32_t B9: 1;
-		uint32_t B10: 1;
-		uint32_t B11: 1;
-		uint32_t B12: 1;
+		uint32_t B00 : 1;
+		uint32_t B01 : 1;
+		uint32_t B02 : 1;
+		uint32_t B03 : 1;
+		uint32_t B04 : 1;
+		uint32_t B05 : 1;
+		uint32_t B06 : 1;
+		uint32_t B07 : 1;
+		uint32_t B08 : 1;
+		uint32_t B09 : 1;
+		uint32_t B10 : 1;
+		uint32_t B11 : 1;
+		uint32_t B12 : 1;
 		uint32_t B13 : 1;
 		uint32_t B14 : 1;
 		uint32_t B15 : 1;
@@ -66,16 +66,16 @@ typedef union Bit_operation_type
 		uint32_t B19 : 1;
 		uint32_t B20 : 1;
 		uint32_t B21 : 1;
-		uint32_t B22: 1;
-		uint32_t B23: 1;
-		uint32_t B24: 1;
+		uint32_t B22 : 1;
+		uint32_t B23 : 1;
+		uint32_t B24 : 1;
 		uint32_t B25 : 1;
-		uint32_t B26: 1;
-		uint32_t B27: 1;
-		uint32_t B28: 1;
-		uint32_t B29: 1;
-		uint32_t B30: 1;
-		uint32_t B31: 1;
+		uint32_t B26 : 1;
+		uint32_t B27 : 1;
+		uint32_t B28 : 1;
+		uint32_t B29 : 1;
+		uint32_t B30 : 1;
+		uint32_t B31 : 1;
 	}Bits;
 }BIT_OP_TYPE;
 #endif /* _BIT_FIELD_H_ */

@@ -1,0 +1,5 @@
+device STM32H743ZI
+si 1
+speed 4000
+erase 0x8020000 0x803FFFF
+qc

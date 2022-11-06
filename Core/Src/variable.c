@@ -11,6 +11,7 @@ volatile uint32_t recv_uart_counter = 0;
  * FirstByteRecv      bit0
  * UpdateInfoGet      bit1
  * UpdateDone         bit2
+ * UpdateDoneReply    bit3
 */
 volatile uint32_t bootloader_flag = 0;
 /**

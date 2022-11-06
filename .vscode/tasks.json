@@ -28,6 +28,13 @@
             "type": "shell",
             "command": "make",
             "args": ["jflash_mem"]
+        },
+        {
+            "label": "Jlink Erase Sector1",
+            "group": "build",
+            "type": "shell",
+            "command": "make",
+            "args": ["jflash_erase_sector1"]
         }
     ]
 }
