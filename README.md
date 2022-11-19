@@ -1,4 +1,4 @@
-# stm32h7_bootload_app Introdunction
+# stm32h7_bootload_app Introduction
 
 - The LED 0 blinks at 1hz for 5 seconds and the system waits for update message. If no single byte is received from FDTI chip (USART1) within the 5seconds, it looks to the memory location at 0x0802_0000. If the data is 0xFFFFFFFF (erased value) at the location, the system halts in a while loop and LED 1 turns on, else it starts excuting code from that location. 
 
@@ -13,7 +13,7 @@
 - versioning are MAJOR.MINOR.PATCH. each is represented by 1 byte value (0 ~ 255)
  e.g. v2.0.23 (update_info.version[0]=0x02, update_info.version[1]=0x00, update_info.version[2]=0x17)
 
-- the update struct takes firmware version from app but it's not store into the flash nor in the eeprom yet.
+- the update struct (update address,firmware version, checksum) taken from desktop serial app is not stored into the flash nor the eeprom. if they are stored in EEPROM, checksum can be checked before the jump at every boot-up.
 
 - For STM32H7, **a flash word = 8 word * 32bit =  256bits**
 
@@ -87,3 +87,13 @@
 
 - compiler: arm-none-eabi-gcc (15:10.3-2021.07-4) 10.3.1 20210621 (release)
 
+## Microcontroller Configuration
+
+![link](image/Screenshot%20from%202022-11-13%2017-32-38.png)
+![link](image/Screenshot%20from%202022-11-13%2017-33-18.png)
+
+# Link
+
+[**user app**](https://github.com/JOSEPH129009/user-app) \
+[**linux serial app**](https://github.com/JOSEPH129009/serial-port-echo-programming) \
+[**video demonstration**](https://www.youtube.com/watch?v=dADT_mSCsA4)
