@@ -17,7 +17,7 @@
             "interface": "swd",
             "preLaunchTask": "build all",
             // Below shows peripherals state
-            // "svdFile": "${env:HOME}/ModusToolbox_2.0/libraries/udd-1.1/udd/devices/MXS40/PSoC6ABLE2/studio/svd/psoc6_01.svd"
+            "svdFile": "${workspaceFolder}/STM32H743.svd",
             // Below shows output of GDB, helpful when something is not working right
             "showDevDebugOutput": "both",
             // "svdFile": "", // Include svd to watch device peripherals
@@ -55,7 +55,7 @@
             "interface": "swd",
             "preLaunchTask": "build all",
             // Below shows peripherals state
-            // "svdFile": "${env:HOME}/ModusToolbox_2.0/libraries/udd-1.1/udd/devices/MXS40/PSoC6ABLE2/studio/svd/psoc6_01.svd"
+            "svdFile": "${workspaceFolder}/STM32H743.svd",
             // Below shows output of GDB, helpful when something is not working right
             // "svdFile": "", // Include svd to watch device peripherals
             
