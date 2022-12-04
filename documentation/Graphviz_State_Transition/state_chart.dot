@@ -1,0 +1,53 @@
+
+digraph G{
+	fontname="FangSong"
+	fontname="PMingLiU"
+	fontname="Microsoft JhengHei"
+	fontname="Times-Roman"
+	bootloader_main -> MAIN_STATE_IDLE	
+		[fontname="Times-Roman", label = 
+		""
+		];
+	MAIN_STATE_IDLE -> MAIN_STATE_JUMP	
+		[fontname="Times-Roman", label = 
+		"wait for 5 seconds"
+		];
+	MAIN_STATE_IDLE -> MAIN_STATE_FLASH_PROGRAM	
+		[fontname="Times-Roman", label = 
+		"receive more than or equal to one byte from UART"
+		];
+	MAIN_STATE_FLASH_PROGRAM -> SUB_STATE_FRAME_ID_CHECK	
+	[fontname="Times-Roman", label = 
+	""
+	];	
+
+	SUB_STATE_FRAME_ID_CHECK -> SUB_STATE_DO_FRAME_ID_STUFF
+	[fontname="Times-Roman", label = 
+	"receive 4bytes 
+	(SOF + HEADER + 
+	LSB_LENGTH + MSB_LENGTH)"
+	];	
+	SUB_STATE_FRAME_ID_CHECK ->	SUB_STATE_TRANSMIT
+	[fontname="Times-Roman", label = 
+	"(2s TimeOut && UART receives more than or equal to a byte)
+	|| SOF != 0x55"
+	];
+	SUB_STATE_DO_FRAME_ID_STUFF ->	SUB_STATE_TRANSMIT
+	[fontname="Times-Roman", label = 
+	""
+	];	
+	SUB_STATE_TRANSMIT ->	SUB_STATE_CLEAR_VAR
+	[fontname="Times-Roman", label = 
+	"Reply ACK or NACK, ACK means the function is executed"
+	];	
+	SUB_STATE_TRANSMIT ->	MAIN_STATE_JUMP
+	[fontname="Times-Roman", label = 
+	"receive UPDATE_DONE header from UART"
+	];	
+	SUB_STATE_CLEAR_VAR ->	SUB_STATE_FRAME_ID_CHECK
+	[fontname="Times-Roman", label = 
+	"UART variables cleared"
+	];	
+
+}
+

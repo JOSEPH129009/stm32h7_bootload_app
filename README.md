@@ -89,8 +89,13 @@
 
 ## Microcontroller Configuration
 
-![link](image/Screenshot%20from%202022-11-13%2017-32-38.png)
-![link](image/Screenshot%20from%202022-11-13%2017-33-18.png)
+![link](documentation/image/Screenshot%20from%202022-12-04%2012-42-10.png)
+![link](documentation/image/Screenshot%20from%202022-11-13%2017-33-18.png)
+
+
+## State Transition
+
+![link](documentation/Graphviz_State_Transition/state_chart.png)
 
 # Link
 
